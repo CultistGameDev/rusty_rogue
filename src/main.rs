@@ -1,12 +1,11 @@
 extern crate gl;
 extern crate glfw;
 
+use glfw::{Action, Context, Key};
 use std::ffi::{c_void, CString};
 
-use glfw::{Action, Context, Key};
-
 const VERTEX_SHADER_SOURCE: &str = r#"
-#version 330
+#version 330 core
 layout (location = 0) in vec3 aPos;
 void main() {
     gl_Position = vec4(aPos, 1.0);
@@ -14,17 +13,27 @@ void main() {
 "#;
 
 const FRAGMENT_SHADER_SOURCE: &str = r#"
-#version 330
+#version 330 core
 out vec4 FragColor;
 void main() {
     FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
 }
 "#;
 
+macro_rules! vec_size {
+    ($var:ident, $t:ty) => {
+        $var.len() * size_of::<$t>()
+    };
+}
+
 fn main() {
     let window_width = 800;
     let window_height = 600;
     let mut glfw = glfw::init(glfw::fail_on_errors).unwrap();
+    glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
+    glfw.window_hint(glfw::WindowHint::OpenGlProfile(
+        glfw::OpenGlProfileHint::Core,
+    ));
 
     let (mut window, events) = glfw
         .create_window(
@@ -46,8 +55,7 @@ fn main() {
         0.5, -0.5, 0.0, // bottom left
         -0.5, -0.5, 0.0,
     ];
-    let size =
-        (std::mem::size_of::<Vec<f32>>() + vertices.len() * std::mem::size_of::<f32>()) as isize;
+    let size = vec_size!(vertices, f32) as isize;
 
     let mut vao: u32 = 0;
     let mut vbo: u32 = 0;
@@ -78,8 +86,8 @@ fn main() {
         gl::AttachShader(program, fragment_shader);
         gl::LinkProgram(program);
 
-        gl::GenVertexArrays(1, &mut vao as *mut u32);
-        gl::GenBuffers(1, &mut vbo as *mut u32);
+        gl::GenVertexArrays(1, std::ptr::addr_of_mut!(vao));
+        gl::GenBuffers(1, std::ptr::addr_of_mut!(vbo));
         gl::DeleteShader(vertex_shader);
         gl::DeleteShader(fragment_shader);
 
@@ -97,7 +105,7 @@ fn main() {
             3,
             gl::FLOAT,
             gl::FALSE,
-            (3 * std::mem::size_of::<f32>()) as i32,
+            (3 * size_of::<f32>()) as i32,
             std::ptr::null(),
         );
         gl::EnableVertexAttribArray(0);
@@ -124,8 +132,8 @@ fn main() {
     }
 
     unsafe {
-        gl::DeleteVertexArrays(1, &vao as *const u32);
-        gl::DeleteBuffers(1, &vbo as *const u32);
+        gl::DeleteVertexArrays(1, std::ptr::addr_of!(vao));
+        gl::DeleteBuffers(1, std::ptr::addr_of!(vbo));
         gl::DeleteProgram(program);
     }
 }
